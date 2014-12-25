@@ -16,17 +16,17 @@ public class PlanetGenerate : MonoBehaviour
 	void Start ()
     {
 
-        //Polyhedra p = generateIcosahedron();
+        //Polyhedra p = GenerateIcosahedron();
         //p.DebugDraw(5f, Color.red, 10000f);
 
-        ////Polyhedra p2 = generateSubdividedIcosahedron(2);
+        ////Polyhedra p2 = GenerateSubdividedIcosahedron(2);
         ////p2.DebugDraw(10f, Color.green, 10000f);
         globalRandom = new Random(4);
-        Polyhedra p10 = generateSubdividedIcosahedron(20);
+        Polyhedra p10 = GenerateSubdividedIcosahedron(20);
         //p10.DebugDraw(1000f, Color.yellow, 10000f);
 
 
-        Polyhedra planet = generatePlanetMesh(SubdivisionLevel, DistortionLevel);
+        Polyhedra planet = GeneratePlanetMesh(SubdivisionLevel, DistortionLevel);
         //planet.DebugDraw(20f, Color.green, 10000f);
         planet.generatePlanetTopology();
         //planet.DebugDraw(40f, Color.red, 10000f);
@@ -101,24 +101,15 @@ public class PlanetGenerate : MonoBehaviour
         //MeshRenderer mr = go.AddComponent<MeshRenderer>();
 
 
-        //mf.mesh = generateIcosahedron();
+        //mf.mesh = GenerateIcosahedron();
         //mr.material = new Material(Shader.Find("Diffuse"));
 
         //go.transform.position = Vector3.zero;
 	}
 	
-	// Update is called once per frame
-	void Update () {
-	
-	}
-
-    void generatePlanet(int icosahedronSubdivision, float topologyDistortionRate, int plateCount) 
+    Polyhedra GeneratePlanetMesh(int icosahedronSubdivision, float topologyDistortionRate)
     {
-    }
-
-    Polyhedra generatePlanetMesh(int icosahedronSubdivision, float topologyDistortionRate)
-    {
-        var mesh = generateSubdividedIcosahedron(icosahedronSubdivision);
+        var mesh = GenerateSubdividedIcosahedron(icosahedronSubdivision);
         var totalDistortion = Math.Ceiling(mesh.edges.Count * topologyDistortionRate);
 		var remainingIterations = 1;
         int i;
@@ -126,8 +117,8 @@ public class PlanetGenerate : MonoBehaviour
         {
 			var iterationDistortion = (int)Math.Floor(totalDistortion / remainingIterations);
 			totalDistortion -= iterationDistortion;
-			distortMesh(mesh, iterationDistortion, globalRandom);
-			relaxMesh(mesh, 0.5f);
+			DistortMesh(mesh, iterationDistortion, globalRandom);
+			RelaxMesh(mesh, 0.5f);
 			--remainingIterations;
         }
         
@@ -138,12 +129,12 @@ public class PlanetGenerate : MonoBehaviour
 		var maxShiftDelta = averageNodeRadius / 50 * mesh.nodes.Count;
 
 		float priorShift, shiftDelta;
-		var currentShift = relaxMesh(mesh, 0.5f);
+		var currentShift = RelaxMesh(mesh, 0.5f);
 
         do
         {
             priorShift = currentShift;
-            currentShift = relaxMesh(mesh, 0.5f);
+            currentShift = RelaxMesh(mesh, 0.5f);
             shiftDelta = Math.Abs(currentShift - priorShift);
         } while (shiftDelta >= minShiftDelta /* && action.intervalIteration - initialIntervalIteration < 300*/);
 
@@ -153,7 +144,7 @@ public class PlanetGenerate : MonoBehaviour
             var p0 = mesh.nodes[face.n[0]].p;
             var p1 = mesh.nodes[face.n[1]].p;
             var p2 = mesh.nodes[face.n[2]].p;
-            face.centroid = calculateFaceCentroid(p0, p1, p2).normalized;
+            face.centroid = CalculateFaceCentroid(p0, p1, p2).normalized;
         }
 
         for(i = 0; i < mesh.nodes.Count; ++i)
@@ -162,7 +153,7 @@ public class PlanetGenerate : MonoBehaviour
             var faceIndex = node.f[0];
             for(var j = 1; j < node.f.Count - 1; ++j)
             {
-                faceIndex = findNextFaceIndex(mesh, i, faceIndex);
+                faceIndex = FindNextFaceIndex(mesh, i, faceIndex);
                 var k = node.f.IndexOf(faceIndex);
                 node.f[k] = node.f[j];
                 node.f[j] = faceIndex;
@@ -172,9 +163,9 @@ public class PlanetGenerate : MonoBehaviour
         return mesh;
     }
 
-    Polyhedra generateSubdividedIcosahedron(int degree)
+    Polyhedra GenerateSubdividedIcosahedron(int degree)
     {
-        var icosahedron = generateIcosahedron();
+        var icosahedron = GenerateIcosahedron();
 
         List<Node> nodes = new List<Node>();
         for(int i = 0; i < icosahedron.nodes.Count; ++i)
@@ -367,7 +358,7 @@ public class PlanetGenerate : MonoBehaviour
         return new Polyhedra(nodes, edges, faces);
     }
 
-    Polyhedra generateIcosahedron()
+    Polyhedra GenerateIcosahedron()
     {
         var phi = (float) ((1.0 + Math.Sqrt(5.0)) / 2.0);
         float du =(float) (1.0 / Math.Sqrt(phi * phi + 1.0));
@@ -496,7 +487,7 @@ public class PlanetGenerate : MonoBehaviour
         return new Polyhedra(nodes, edges, faces);
     }
 
-    bool distortMesh(Polyhedra mesh, int degree, Random random)
+    bool DistortMesh(Polyhedra mesh, int degree, Random random)
     {
         double totalSurfaceArea = 4 * Math.PI;
         double idealFaceArea = totalSurfaceArea / mesh.faces.Count;
@@ -532,7 +523,7 @@ public class PlanetGenerate : MonoBehaviour
         {
             var consecutiveFailedAttempts = 0;
             var edgeIndex = random.Next(0, mesh.edges.Count);
-            while(!conditionalRotateEdge(mesh, edgeIndex, rotationPredicate))
+            while(!ConditionalRotateEdge(mesh, edgeIndex, rotationPredicate))
             {
                 if (++consecutiveFailedAttempts >= mesh.edges.Count) return false;
                 edgeIndex = (edgeIndex + 1) % mesh.edges.Count;
@@ -542,7 +533,7 @@ public class PlanetGenerate : MonoBehaviour
         return true;
     }
 
-    float relaxMesh(Polyhedra mesh, float multiplier)
+    float RelaxMesh(Polyhedra mesh, float multiplier)
     {
         var totalSurfaceArea = 4 * Math.PI;
         var idealFaceArea = totalSurfaceArea / mesh.faces.Count;
@@ -569,7 +560,7 @@ public class PlanetGenerate : MonoBehaviour
             var e0 = Vector3.Distance(p1, p0) / idealEdgeLength; // p1.distanceTo(p0) / idealEdgeLength;
             var e1 = Vector3.Distance(p2, p1) / idealEdgeLength; // p2.distanceTo(p1) / idealEdgeLength;
             var e2 = Vector3.Distance(p0, p2) / idealEdgeLength; // p0.distanceTo(p2) / idealEdgeLength;
-            var centroid = calculateFaceCentroid(p0, p1, p2).normalized;
+            var centroid = CalculateFaceCentroid(p0, p1, p2).normalized;
             var v0 = centroid - p0; // centroid.clone().sub(p0);
             var v1 = centroid - p1;
             var v2 = centroid - p2;
@@ -629,7 +620,7 @@ public class PlanetGenerate : MonoBehaviour
         return totalShift;
     }
 
-    Vector3 calculateFaceCentroid(Vector3 pa, Vector3 pb, Vector3 pc)
+    Vector3 CalculateFaceCentroid(Vector3 pa, Vector3 pb, Vector3 pc)
     {
         var vabHalf = (pb - pa) / 2;
         var pabHalf = pa + vabHalf;
@@ -668,7 +659,7 @@ public class PlanetGenerate : MonoBehaviour
         return vectorNormalized *= size;
 	}
 
-    public static float calculateTriangleArea(Vector3 pa, Vector3 pb, Vector3 pc)
+    public static float CalculateTriangleArea(Vector3 pa, Vector3 pb, Vector3 pc)
     {
         float A = Vector3.Distance(pa, pb);
         float B = Vector3.Distance(pb, pc);
@@ -687,13 +678,13 @@ public class PlanetGenerate : MonoBehaviour
 		return Vector3.Dot(planeNormal, (point - planePoint));
 	}
 
-    bool conditionalRotateEdge(Polyhedra mesh, int edgeIndex, Func<Node, Node, Node, Node, bool> predicate)
+    bool ConditionalRotateEdge(Polyhedra mesh, int edgeIndex, Func<Node, Node, Node, Node, bool> predicate)
     {
         var edge = mesh.edges[edgeIndex];
         var face0 = mesh.faces[edge.f[0]];
         var face1 = mesh.faces[edge.f[1]];
-        var farNodeFaceIndex0 = getFaceOppositeNodeIndex(face0, edge);
-        var farNodeFaceIndex1 = getFaceOppositeNodeIndex(face1, edge);
+        var farNodeFaceIndex0 = GetFaceOppositeNodeIndex(face0, edge);
+        var farNodeFaceIndex1 = GetFaceOppositeNodeIndex(face1, edge);
         var newNodeIndex0 = face0.n[farNodeFaceIndex0];
         var oldNodeIndex0 = face0.n[(farNodeFaceIndex0 + 1) % 3];
         var newNodeIndex1 = face1.n[farNodeFaceIndex1];
@@ -738,7 +729,7 @@ public class PlanetGenerate : MonoBehaviour
         return true;
     }
 
-    int getFaceOppositeNodeIndex(Face face, Edge edge)
+    int GetFaceOppositeNodeIndex(Face face, Edge edge)
     {
         if (face.n[0] != edge.n[0] && face.n[0] != edge.n[1]) return 0;
         if (face.n[1] != edge.n[0] && face.n[1] != edge.n[1]) return 1;
@@ -746,370 +737,19 @@ public class PlanetGenerate : MonoBehaviour
         else return -1;
     }
 
-    int getEdgeOppositeFaceIndex(Edge edge, int faceIndex)
+    int GetEdgeOppositeFaceIndex(Edge edge, int faceIndex)
     {
         if (edge.f[0] == faceIndex) return edge.f[1];
         if (edge.f[1] == faceIndex) return edge.f[0];
         else return -1;
     }
 
-    int findNextFaceIndex(Polyhedra mesh, int nodeIndex, int faceIndex)
+    int FindNextFaceIndex(Polyhedra mesh, int nodeIndex, int faceIndex)
     {
         var node = mesh.nodes[nodeIndex];
         var face = mesh.faces[faceIndex];
         var nodeFaceIndex = face.n.IndexOf(nodeIndex);
         var edge = mesh.edges[face.e[(nodeFaceIndex + 2) % 3]];
-        return getEdgeOppositeFaceIndex(edge, faceIndex);
-    }
-}
-
-public class Node
-{
-    public Vector3 p;
-    public List<int> e = new List<int>();
-    public List<int> f = new List<int>();
-
-    public Node()
-    {
-
-    }
-
-    public Node(Vector3 v)
-    {
-        this.p = v;
-    }
-}
-public class Edge
-{
-    public int[] n;
-    public List<int> f = new List<int>();
-    public List<int> subdivided_n = new List<int>();
-    public List<int> subdivided_e = new List<int>();
-
-    public Edge()
-    {
-        n = new int[2];
-    }
-
-    public Edge(int start, int end)
-    {
-        this.n = new int[2] { start, end };
-    }
-
-    public Edge(int[] e)
-    {
-        this.n = e;
-    }
-
-
-}
-public class Face
-{
-    public List<int> n = new List<int>();
-    public List<int> e = new List<int>();
-    public Vector3 centroid;
-
-    public Face()
-    {
-
-    }
-
-    public Face(int[] n, int[] e)
-    {
-        this.n = new List<int>(n);
-        this.e = new List<int>(e);
-    }
-}
-public class Polyhedra
-{
-    public List<Node> nodes;
-    public List<Edge> edges;
-    public List<Face> faces;
-    public Topology topology = null;
-
-    public Polyhedra(List<Node> n, List<Edge> e, List<Face> f)
-    {
-        this.nodes = n;
-        this.edges = e;
-        this.faces = f;
-    }
-
-    public void DebugDraw(float scale, Color color, float duration)
-    {
-        foreach(var e in edges)
-        {
-            Debug.DrawLine(nodes[e.n[0]].p * scale, nodes[e.n[1]].p * scale, color, duration);
-        }
-    }
-    public void generatePlanetTopology()
-    {
-        List<Corner> corners = new List<Corner>(this.faces.Count);
-        List<Border> borders = new List<Border>(this.edges.Count);
-        List<Tile> tiles = new List<Tile>(this.nodes.Count);
-        int i;
-        for(i = 0; i < this.faces.Count; ++i)
-        {
-            var face = this.faces[i];
-            corners.Add(new Corner(i, face.centroid * 1000, face.e.Count, face.e.Count, face.n.Count));
-        }
-
-        for(i = 0; i < this.edges.Count; ++i)
-        {
-            var edge = this.edges[i];
-            borders.Add(new Border(i, 2, 4, 2)); //edge.f.Count, this.faces[edge.f[0]].e.Count + this.faces[edge.f[1]].e.Count - 2, edge.n.Count
-        }
-        
-        for(i = 0; i < this.nodes.Count; ++i)
-        {
-            var node = this.nodes[i];
-            tiles.Add(new Tile(i, node.p * 1000, node.f.Count, node.e.Count, node.e.Count));
-        }
-
-        for(i = 0; i < corners.Count; ++i)
-        {
-            var corner = corners[i];
-            var face = this.faces[i];
-            for(var j = 0; j < face.e.Count; ++j)
-            {
-                corner.borders[j] = (borders[face.e[j]]);
-            }
-            for(var j = 0; j < face.n.Count; ++j)
-            {
-                corner.tiles[j] = (tiles[face.n[j]]);
-            }
-        }
-
-        for(i = 0; i < borders.Count; ++i)
-        {
-			var border = borders[i];
-			var edge = this.edges[i];
-			var averageCorner = new Vector3(0, 0, 0);
-			var n = 0;
-			for (var j = 0; j < edge.f.Count; ++j)
-			{
-				var corner = corners[edge.f[j]];
-				averageCorner += corner.position;
-				border.corners[j] = corner;
-				for (var k = 0; k < corner.borders.Length; ++k)
-				{
-					if (corner.borders[k] != border) border.borders[n++] = corner.borders[k];
-				}
-			}
-			border.midpoint = averageCorner / border.corners.Length;
-			for (var j = 0; j < edge.n.Length; ++j)
-			{
-				border.tiles[j] = tiles[edge.n[j]];
-			}
-        }
-        
-		for (i = 0; i < corners.Count; ++i)
-		{
-			var corner = corners[i];
-			for (var j = 0; j < corner.borders.Length; ++j)
-			{
-				corner.corners[j] = corner.borders[j].oppositeCorner(corner);
-			}
-		}
-
-        for (i = 0; i < tiles.Count; ++i)
-		{
-			var tile = tiles[i];
-			var node = this.nodes[i];
-			for (var j = 0; j < node.f.Count; ++j)
-			{
-				tile.corners[j] = corners[node.f[j]];
-			}
-			for (var j = 0; j < node.e.Count; ++j)
-			{
-				var border = borders[node.e[j]];
-				if (border.tiles[0] == tile)
-				{
-					for (var k = 0; k < tile.corners.Length; ++k)
-					{
-						var corner0 = tile.corners[k];
-						var corner1 = tile.corners[(k + 1) % tile.corners.Length];
-						if (border.corners[1] == corner0 && border.corners[0] == corner1)
-						{
-							border.corners[0] = corner0;
-							border.corners[1] = corner1;
-						}
-						else if (border.corners[0] != corner0 || border.corners[1] != corner1)
-						{
-							continue;
-						}
-						tile.borders[k] = border;
-						tile.tiles[k] = border.oppositeTile(tile);
-						break;
-					}
-				}
-				else
-				{
-					for (var k = 0; k < tile.corners.Length; ++k)
-					{
-						var corner0 = tile.corners[k];
-						var corner1 = tile.corners[(k + 1) % tile.corners.Length];
-						if (border.corners[0] == corner0 && border.corners[1] == corner1)
-						{
-							border.corners[1] = corner0;
-							border.corners[0] = corner1;
-						}
-						else if (border.corners[1] != corner0 || border.corners[0] != corner1)
-						{
-							continue;
-						}
-						tile.borders[k] = border;
-						tile.tiles[k] = border.oppositeTile(tile);
-						break;
-					}
-				}
-			}
-
-			tile.averagePosition = new Vector3(0, 0, 0);
-			for (var j = 0; j < tile.corners.Length; ++j)
-			{
-				tile.averagePosition += tile.corners[j].position;
-			}
-			tile.averagePosition /= tile.corners.Length;
-			
-			var maxDistanceToCorner = 0f;
-			for (var j = 0; j < tile.corners.Length; ++j)
-			{
-				maxDistanceToCorner = Math.Max(maxDistanceToCorner, Vector3.Distance(tile.corners[j].position, tile.averagePosition));
-			}
-			
-			var area = 0f;
-			for (var j = 0; j < tile.borders.Length; ++j)
-			{
-				area += PlanetGenerate.calculateTriangleArea(tile.position, tile.borders[j].corners[0].position, tile.borders[j].corners[1].position);
-			}
-			tile.area = area;
-			
-			tile.normal = tile.position.normalized;
-            tile.radius = maxDistanceToCorner;
-		}
-
-        for (i = 0; i < corners.Count; ++i)
-		{
-			var corner = corners[i];
-			corner.area = 0;
-			for (var j = 0; j < corner.tiles.Length; ++j)
-			{
-				corner.area += corner.tiles[j].area / corner.tiles[j].corners.Length;
-			}
-		}
-
-        this.topology = new Topology(corners, borders, tiles);
-    }
-    
-
-}
-public class Corner
-{
-    public int id;
-    public Vector3 position;
-    public Corner[] corners;
-    public Border[] borders;
-    public Tile[] tiles;
-    public float area;
-
-    public Corner(int id, Vector3 position, int cornerCount, int borderCount, int tileCount)
-    {
-        this.id = id;
-        this.position = position;
-        this.corners = new Corner[cornerCount];
-        this.borders = new Border[borderCount];
-        this.tiles =   new Tile[tileCount];
-    }
-
-    public Vector3 vectorTo(Corner corner)
-    {
-        return corner.position - this.position;
-    }
-}
-public class Border
-{
-    int id;
-    public Corner[] corners;
-    public Border[] borders;
-    public Tile[] tiles;
-    public Vector3 midpoint;
-
-    public Border(int id, int cornerCount, int borderCount, int tileCount)
-    {
-        this.id = id;
-        this.corners = new Corner[cornerCount];
-        this.borders = new Border[borderCount];
-        this.tiles = new Tile[tileCount];
-    }
-
-    public Corner oppositeCorner(Corner corner)
-    {
-        return (this.corners[0] == corner) ? this.corners[1] : this.corners[0];
-    }
-
-    public Tile oppositeTile(Tile tile)
-    {
-        return (this.tiles[0] == tile) ? this.tiles[1] : this.tiles[0];
-    }
-
-    public float length()
-    {
-        return Vector3.Distance(this.corners[0].position, this.corners[1].position);
-    }
-}
-public class Tile
-{
-    public int id;
-    public Vector3 position;
-    public Vector3 averagePosition;
-    public Vector3 normal;
-    public float area;
-    public float radius;
-    public Corner[] corners;
-    public Border[] borders;
-    public Tile[] tiles;
-
-    public Tile(int id, Vector3 position, int cornerCount, int borderCount, int tileCount)
-    {
-        this.id = id;
-        this.position = position;
-        this.corners = new Corner[cornerCount];
-        this.borders = new Border[borderCount];
-        this.tiles = new Tile[tileCount];
-    }
-}
-public class Topology
-{
-    public List<Corner> corners;
-    public List<Border> borders;
-    public List<Tile> tiles;
-
-    public Topology()
-    {
-        corners = new List<Corner>();
-        borders = new List<Border>();
-        tiles = new List<Tile>();
-    }
-
-    public Topology(List<Corner> corners, List<Border> borders, List<Tile> tiles)
-    {
-        this.corners = corners;
-        this.borders = borders;
-        this.tiles = tiles;
-    }
-
-    public void DebugDraw(float scale, Color color, float duration)
-    {
-        foreach(var b in borders)
-        {
-            if(b.corners.Length != 2)
-            {
-                Debug.Log("LOL - " + b.corners.Length);
-            }
-            else
-            {
-                Debug.DrawLine(b.corners[0].position * scale, b.corners[1].position * scale, color, duration);
-            }
-        }
+        return GetEdgeOppositeFaceIndex(edge, faceIndex);
     }
 }
