@@ -212,3 +212,23 @@ $RECYCLE.BIN/
 *.msi
 *.msm
 *.msp
+
+# Imported from a previous project
+# Note: Might have duplicates
+*.booproj
+*.csproj
+*.exe
+*.pdb
+*.unityproj
+*_Data
+.git
+.gitattributes
+.gitignore
+Assembly-CSharp-vs.csproj.user
+Library
+Release
+Temp
+obj
+sysinfo.txt
+taosim_new-csharp.sln.DotSettings.user
+
