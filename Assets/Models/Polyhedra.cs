@@ -162,7 +162,7 @@ public class Polyhedra
             var area = 0f;
             for (var j = 0; j < tile.borders.Length; ++j)
             {
-                area += PlanetGenerate.calculateTriangleArea(tile.position, tile.borders[j].corners[0].position, tile.borders[j].corners[1].position);
+                area += PlanetGenerate.CalculateTriangleArea(tile.position, tile.borders[j].corners[0].position, tile.borders[j].corners[1].position);
             }
             tile.area = area;
 			
