@@ -19,11 +19,14 @@ function Start () {
 
 	// Make the rigid body not change rotation
    	if (GetComponent.<Rigidbody>())
-		GetComponent.<Rigidbody>().freezeRotation = true;
+   	    GetComponent.<Rigidbody>().freezeRotation = true;
+
+   	this.transform.position = target.position - Vector3.forward * distance;
+   	this.transform.LookAt(target);
 }
 
 function LateUpdate () {
-    if (target) {
+    if (target && Input.GetMouseButton(0)) {
         x += Input.GetAxis("Mouse X") * xSpeed * 0.02;
         y -= Input.GetAxis("Mouse Y") * ySpeed * 0.02;
  		
