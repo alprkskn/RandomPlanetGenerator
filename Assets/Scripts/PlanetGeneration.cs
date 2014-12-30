@@ -446,6 +446,11 @@ public class Corner
     public Tile[] tiles;
     public float area;
     public float distanceToPlateRoot;
+    public float distanceToPlateBoundary;
+    public bool betweenPlates;
+    public float pressure;
+    public float shear;
+    public float elevation;
 
     public Corner(int id, Vector3 position, int cornerCount, int borderCount, int tileCount)
     {
@@ -468,6 +473,7 @@ public class Border
     public Border[] borders;
     public Tile[] tiles;
     public Vector3 midpoint;
+    public bool betweenPlates;
 
     public Border(int id, int cornerCount, int borderCount, int tileCount)
     {
@@ -504,6 +510,7 @@ public class Tile
     public Border[] borders;
     public Tile[] tiles;
     public Plate plate;
+    public float elevation;
 
     public Tile(int id, Vector3 position, int cornerCount, int borderCount, int tileCount)
     {
@@ -549,6 +556,7 @@ public class Tile
     public void DebugDraw(Color color, float duration, float offset, Transform t)
     {
         Matrix4x4 trs = Matrix4x4.TRS(t.position, t.rotation, t.localScale);
+        var pos = trs.MultiplyPoint3x4(this.averagePosition);
         var norm = (t.rotation * this.normal).normalized;
         foreach(var b in this.borders)
         {
@@ -557,6 +565,7 @@ public class Tile
 
             Debug.DrawLine(trs.MultiplyPoint3x4(b.corners[0].position) + norm /*this.normal*/ * offset, trs.MultiplyPoint3x4(b.corners[1].position) + norm * offset, color, duration);
         }
+        //Debug.DrawLine(pos, pos + norm * t.localScale.x * (this.elevation + 1), Color.magenta);
     }
 }
 public class Topology
