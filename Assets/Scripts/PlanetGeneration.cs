@@ -445,6 +445,7 @@ public class Corner
     public Border[] borders;
     public Tile[] tiles;
     public float area;
+    public float distanceToPlateRoot;
 
     public Corner(int id, Vector3 position, int cornerCount, int borderCount, int tileCount)
     {
@@ -502,6 +503,7 @@ public class Tile
     public Corner[] corners;
     public Border[] borders;
     public Tile[] tiles;
+    public Plate plate;
 
     public Tile(int id, Vector3 position, int cornerCount, int borderCount, int tileCount)
     {
@@ -510,6 +512,7 @@ public class Tile
         this.corners = new Corner[cornerCount];
         this.borders = new Border[borderCount];
         this.tiles = new Tile[tileCount];
+        this.plate = null;
     }
 
     // TODO: These methods should keep up with Position, Rotation and Scale updates.
@@ -665,21 +668,24 @@ public class SpatialPartition
     }
 
     // TODO: These methods should keep up with Position, Rotation and Scale updates.
-    public bool IntersectRay(Ray ray, out Tile tile, Transform t)
+    public bool IntersectRay(Ray ray, out Tile tile, out List<Tile> partition, Transform t)
     {
         Matrix4x4 trs = Matrix4x4.TRS(t.position, t.rotation, t.localScale);
         var sCenter = trs.MultiplyPoint3x4(this.sphereCenter);
         var sRadius = this.sphereRadius * Math.Max(t.localScale.x, Math.Max(t.localScale.y, t.localScale.z));
 
         tile = null;
+        partition = null;
         if(Utils.IntersectRayWithSphere(ray, sCenter /*this.sphereCenter*/, sRadius /*this.sphereRadius*/))
         {
             for(var i = 0; i < this.partitions.Count; ++i)
             {
                 Tile result;
-                var intersection = this.partitions[i].IntersectRay(ray, out result, t);
+                List<Tile> part;
+                var intersection = this.partitions[i].IntersectRay(ray, out result, out part, t);
                 if(intersection)
                 {
+                    partition = part;
                     tile = result;
                     return true;
                 }
@@ -689,6 +695,7 @@ public class SpatialPartition
             {
                 if (this.tiles[i].IntersectRay(ray, t))
                 {
+                    partition = this.tiles;
                     tile = this.tiles[i];
                     return true;
                 }
@@ -696,6 +703,42 @@ public class SpatialPartition
         }
         return false;
     }
+}
+public class Plate
+{
+    public Color color;
+    public Vector3 driftAxis;
+    public float driftRate;
+    public float spinRate;
+    public float elevation;
+    public bool oceanic;
+    public Corner root;
+
+    public List<Tile> tiles;
+    public List<Corner> boundaryCorners;
+    public List<Border> boundaryBorders;
+
+    public Plate(Color color, Vector3 driftAxis, float driftRate, float spinRate, float elevation, bool oceanic, Corner root)
+    {
+        this.color = color;
+        this.driftAxis = driftAxis;
+        this.driftRate = driftRate;
+        this.spinRate = spinRate;
+        this.elevation = elevation;
+        this.oceanic = oceanic;
+        this.root = root;
+        this.tiles = new List<Tile>();
+        this.boundaryCorners = new List<Corner>();
+        this.boundaryBorders = new List<Border>();
+    }
+
+    public Vector3 CalculateMovement(Vector3 position)
+    {
+        var movement = Vector3.Cross(this.driftAxis, position).normalized * (this.driftRate * Vector3.Distance(Vector3.Project(position, this.driftAxis), position));
+        movement += Vector3.Cross(this.root.position, position).normalized * (this.spinRate * Vector3.Distance(Vector3.Project(position, this.root.position), position));
+        return movement;
+    }
+
 }
 public static class Utils
 {

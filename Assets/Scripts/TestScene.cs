@@ -19,7 +19,8 @@ public class TestScene : MonoBehaviour {
             GameObject go = new GameObject("Planet " + i);
             planets.Add(go);
             Planet p = go.AddComponent<Planet>();
-            p.subdivisionLevel = Random.Range(1, 40);
+            p.subdivisionLevel = Random.Range(1, 30);
+            p.plateCount = (int)Mathf.Floor(p.subdivisionLevel * Random.Range(.2f, 2f));
             go.transform.position = new Vector3(Random.Range(-extents.x, extents.x), Random.Range(-extents.y, extents.y), Random.Range(-extents.z, -extents.z));
             float scale = Random.Range(minScale, maxScale);
             go.transform.localScale = Vector3.one * scale;

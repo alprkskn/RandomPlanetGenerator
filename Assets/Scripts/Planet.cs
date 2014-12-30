@@ -5,16 +5,18 @@ using System;
 using Random = System.Random;
 
 public class Planet : MonoBehaviour {
-    private Polyhedra planet;
+
+    private Polyhedra surface;
     private Random globalRandom;
+    private List<Plate> tectonicPlates;
 
     public int randomSeed = 5;
     public int subdivisionLevel = 2;
     public float distortionLevel = 1f;
-    int plateCount = 36;
-    float oceanicRate = 0.7f;
-    float heatLevel = 1.0f;
-    float moistureLevel = 1.0f;
+    public int plateCount = 36;
+    public float oceanicRate = 0.7f;
+    public float heatLevel = 1.0f;
+    public float moistureLevel = 1.0f;
 
     void Awake()
     {
@@ -24,9 +26,12 @@ public class Planet : MonoBehaviour {
     public void Generate()
     {
         this.globalRandom = new Random(randomSeed);
-        this.planet = GeneratePlanetPolyhedra();
-        this.planet.GeneratePlanetTopology();
-        this.planet.topology.GeneratePlanetPartition();
+        this.surface = GeneratePlanetPolyhedra();
+        this.surface.GeneratePlanetTopology();
+        this.surface.topology.GeneratePlanetPartition();
+        this.GeneratePlanetTectonicPlates();
+
+        //DrawTectonicPlates(6000f);
         this.GeneratePlanetMesh();
     }
 
@@ -36,7 +41,24 @@ public class Planet : MonoBehaviour {
         this.IntersectRay(Camera.main.ScreenPointToRay(Input.mousePosition), out tile);
         if (tile != null)
         {
-            tile.DebugDraw(Color.green, 0, this.transform.localScale.x / 100f, this.transform);
+            tile.DebugDraw(Color.red, 0, this.transform.localScale.x / 100f, this.transform);
+            foreach(var t in tile.plate.tiles)
+            {
+                t.DebugDraw(Color.green, 0, this.transform.localScale.x / 150f, this.transform);
+            }
+        }
+
+    }
+
+    void DrawTectonicPlates(float duration)
+    {
+        foreach(var p in this.tectonicPlates)
+        {
+            Color c = new Color((float)globalRandom.NextDouble(), (float)globalRandom.NextDouble(), (float)globalRandom.NextDouble());
+            foreach(var t in p.tiles)
+            {
+                t.DebugDraw(c, duration, this.transform.localScale.x / 150f, this.transform);
+            }
         }
     }
 
@@ -93,7 +115,7 @@ public class Planet : MonoBehaviour {
                 node.f[j] = faceIndex;
             }
         }
-        this.planet = mesh;
+        this.surface = mesh;
         return mesh;
     }
     private void GeneratePlanetMesh()
@@ -104,7 +126,7 @@ public class Planet : MonoBehaviour {
         var tris = new List<int>();
 
 	    var tileStart = 0;
-	    foreach (var tile in planet.topology.tiles)
+	    foreach (var tile in surface.topology.tiles)
 	    {
             if(tileStart >= 64000)
             {
@@ -128,18 +150,11 @@ public class Planet : MonoBehaviour {
             verts.Add(trs.MultiplyPoint3x4(tile.averagePosition));
             norms.Add((transform.rotation * tile.averagePosition).normalized);
 
-            //Debug.DrawLine(verts[verts.Count - 1], verts[verts.Count - 1] + norms[norms.Count - 1] * 25f, Color.red, 1000f);
-
 	        tileStart = verts.Count - 1;
 	        foreach (var corner in tile.corners)
 	        {
 	            verts.Add(trs.MultiplyPoint3x4(corner.position));
                 norms.Add((transform.rotation * tile.averagePosition).normalized);
-
-                ////brnDEBUG
-                //var cubeMark = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                //cubeMark.transform.position = corner.position;
-                //cubeMark.renderer.material.color = new Color(255, 0, 0);
 	        }
 
             for (int i = 1; i <= tile.corners.Length; i++)
@@ -166,34 +181,162 @@ public class Planet : MonoBehaviour {
         mesh2.normals = norms.ToArray();
     }
     
+    private void GeneratePlanetTerrain()
+    {
+
+    }
+
+    #region Tectonic Plate Generation
+    private List<Plate> GeneratePlanetTectonicPlates()
+    {
+        var plates = new List<Plate>();
+        var platelessTiles = new List<Tile>();
+        var platelessTilePlates = new List<Plate>();
+        var topology = this.surface.topology;
+
+        var failedCount = 0;
+        while(plates.Count < plateCount && failedCount < 10000)
+        {
+            var corner = topology.corners[globalRandom.Next(0, topology.corners.Count)];
+            var adjacentToExistingPlate = false;
+            for(var i = 0; i < corner.tiles.Length; ++i)
+            {
+                if(corner.tiles[i].plate != null)
+                {
+                    adjacentToExistingPlate = true;
+                    failedCount += 1;
+                    break;
+                }
+            }
+            if (adjacentToExistingPlate) continue;
+
+            failedCount = 0;
+
+            var oceanic = (globalRandom.NextDouble() < this.oceanicRate);
+            var plate = new Plate(new Color((float)globalRandom.NextDouble(), (float)globalRandom.NextDouble(), (float)globalRandom.NextDouble()),
+                                    Utils.RandomUnitVector(globalRandom),
+                                    (float) (globalRandom.NextDouble() * (Math.PI / 15f) - (Math.PI / 30f)),
+                                    (float) (globalRandom.NextDouble() * (Math.PI / 15f) - (Math.PI / 30f)),
+                                    (float) ((oceanic) ? (globalRandom.NextDouble() * 0.5 - 0.8) : (globalRandom.NextDouble() * 0.4 + 0.1)),
+                                    oceanic,
+                                    corner);
+            plates.Add(plate);
+
+            for(var i = 0; i < corner.tiles.Length; ++i)
+            {
+                corner.tiles[i].plate = plate;
+                plate.tiles.Add(corner.tiles[i]);
+            }
+            for(var i = 0; i < corner.tiles.Length; ++i)
+            {
+                var tile = corner.tiles[i];
+                for(var j = 0; j < tile.tiles.Length; ++j)
+                {
+                    var adjacentTile = tile.tiles[j];
+                    if(adjacentTile.plate == null)
+                    {
+                        platelessTiles.Add(adjacentTile);
+                        platelessTilePlates.Add(plate);
+                    }
+                }
+            }
+        }
+
+        while(platelessTiles.Count > 0)
+        {
+            // XXX: Try something else instead of globalRandom.Next() if this fails.
+            var tileIndex = (int)Math.Floor(Math.Pow(globalRandom.NextDouble(), 2) * platelessTiles.Count);
+			var tile = platelessTiles[tileIndex];
+			var plate = platelessTilePlates[tileIndex];
+            platelessTiles.RemoveAt(tileIndex); // splice(tileIndex, 1);
+            platelessTilePlates.RemoveAt(tileIndex); // splice(tileIndex, 1);
+			if (tile.plate == null)
+			{
+				tile.plate = plate;
+				plate.tiles.Add(tile);
+				for (var j = 0; j < tile.tiles.Length; ++j)
+				{
+					if (tile.tiles[j].plate == null)
+					{
+						platelessTiles.Add(tile.tiles[j]);
+						platelessTilePlates.Add(plate);
+					}
+				}
+			}
+        }
+        calculateCornerDistancesToPlateRoot(plates);
+        this.tectonicPlates = plates;
+        return plates;
+    }
+
+    struct DistanceCorner
+    {
+        public Corner corner;
+        public float distanceToPlateRoot;
+        public DistanceCorner(Corner c, float d)
+        {
+            this.corner = c;
+            this.distanceToPlateRoot = d;
+        }
+    }
+
+    void calculateCornerDistancesToPlateRoot(List<Plate> plates)
+    {
+        var distanceCornerQueue = new List<DistanceCorner>();
+        for(var i = 0; i < plates.Count; ++i)
+        {
+            var corner = plates[i].root;
+            corner.distanceToPlateRoot = 0;
+            for(var j = 0; j < corner.corners.Length; ++j)
+            {
+                distanceCornerQueue.Add(new DistanceCorner(corner.corners[j], corner.borders[j].Length()));
+            }
+        }
+
+        while(true)
+        {
+            if (distanceCornerQueue.Count == 0) return;
+
+            var iEnd = distanceCornerQueue.Count;
+            for(var i = 0; i < iEnd; ++i)
+            {
+                var front = distanceCornerQueue[i];
+                var corner = front.corner;
+                var distanceToPlateRoot = front.distanceToPlateRoot;
+                if(corner.distanceToPlateRoot == 0 || corner.distanceToPlateRoot > distanceToPlateRoot)
+                {
+                    corner.distanceToPlateRoot = distanceToPlateRoot;
+                    for(var j = 0; j < corner.corners.Length; ++j)
+                    {
+                        distanceCornerQueue.Add(new DistanceCorner(corner.corners[j], distanceToPlateRoot + corner.borders[j].Length()));
+                    }
+                }
+            }
+
+            distanceCornerQueue.RemoveRange(0, iEnd);
+            distanceCornerQueue.Sort(delegate(DistanceCorner A, DistanceCorner B)
+            {
+                return A.distanceToPlateRoot.CompareTo(B.distanceToPlateRoot);
+            });
+        }
+    }
+    #endregion
+
+    #region Intersection/Tile Selection
     public bool IntersectRay(Ray ray, out Tile tile)
     {
-        SpatialPartition partition;
+        List<Tile> partition;
         return this.IntersectRay(ray, out tile, out partition);
     }
-    public bool IntersectRay(Ray ray, out Tile tile, out SpatialPartition partition)
+    public bool IntersectRay(Ray ray, out Tile tile, out List<Tile> partition)
     {
         tile = null;
         partition = null;
-
-        if(planet.topology.partition.IntersectRay(ray, out tile, this.transform))
+        if(surface.topology.partition.IntersectRay(ray, out tile, out partition, this.transform))
         {
             return true;
         }
-        //foreach (var p in planet.topology.partition.partitions)
-        //{
-        //    if (p.IntersectRay(ray, out tile, this.transform))
-        //    {
-        //        partition = p;
-        //        tile.DebugDraw(Color.red, 0.001f, 2f, this.transform);
-        //        foreach (var t in p.tiles)
-        //        {
-        //            t.DebugDraw(Color.green, 0, 1f, this.transform);
-        //        }
-        //        return true;
-        //    }
-        //}
         return false;
     }
-	// Use this for initialization
+    #endregion
 }
