@@ -4,7 +4,8 @@ using System.Collections.Generic;
 using System;
 using Random = System.Random;
 
-public class Planet : MonoBehaviour {
+public class Planet : MonoBehaviour
+{
 
     private Polyhedra surface;
     private Random globalRandom;
@@ -53,10 +54,10 @@ public class Planet : MonoBehaviour {
 
     void DrawTectonicPlates(float duration)
     {
-        foreach(var p in this.tectonicPlates)
+        foreach (var p in this.tectonicPlates)
         {
             Color c = new Color((float)globalRandom.NextDouble(), (float)globalRandom.NextDouble(), (float)globalRandom.NextDouble());
-            foreach(var t in p.tiles)
+            foreach (var t in p.tiles)
             {
                 t.DebugDraw(c, duration, this.transform.localScale.x / 150f, this.transform);
             }
@@ -68,25 +69,25 @@ public class Planet : MonoBehaviour {
         var mesh = Utils.GenerateSubdividedIcosahedron(this.subdivisionLevel);
         mesh.planet = this;
         var totalDistortion = Math.Ceiling(mesh.edges.Count * this.distortionLevel);
-		var remainingIterations = 6;
+        var remainingIterations = 6;
         int i;
-        while(remainingIterations > 0)
+        while (remainingIterations > 0)
         {
-			var iterationDistortion = (int)Math.Floor(totalDistortion / remainingIterations);
-			totalDistortion -= iterationDistortion;
+            var iterationDistortion = (int)Math.Floor(totalDistortion / remainingIterations);
+            totalDistortion -= iterationDistortion;
             mesh.DistortMesh(iterationDistortion, globalRandom);
-			mesh.RelaxMesh(0.5f);
-			--remainingIterations;
+            mesh.RelaxMesh(0.5f);
+            --remainingIterations;
         }
-        
-        //var initialIntervalIteration = action.intervalIteration;
-	
-		var averageNodeRadius = Math.Sqrt(4 * Math.PI / mesh.nodes.Count);
-		var minShiftDelta = averageNodeRadius / 50000 * mesh.nodes.Count;
-		var maxShiftDelta = averageNodeRadius / 50 * mesh.nodes.Count;
 
-		float priorShift, shiftDelta;
-		var currentShift = mesh.RelaxMesh(0.5f);
+        //var initialIntervalIteration = action.intervalIteration;
+
+        var averageNodeRadius = Math.Sqrt(4 * Math.PI / mesh.nodes.Count);
+        var minShiftDelta = averageNodeRadius / 50000 * mesh.nodes.Count;
+        var maxShiftDelta = averageNodeRadius / 50 * mesh.nodes.Count;
+
+        float priorShift, shiftDelta;
+        var currentShift = mesh.RelaxMesh(0.5f);
 
         do
         {
@@ -95,7 +96,7 @@ public class Planet : MonoBehaviour {
             shiftDelta = Math.Abs(currentShift - priorShift);
         } while (shiftDelta >= minShiftDelta /* && action.intervalIteration - initialIntervalIteration < 300*/);
 
-        for(i = 0; i < mesh.faces.Count; ++i)
+        for (i = 0; i < mesh.faces.Count; ++i)
         {
             var face = mesh.faces[i];
             var p0 = mesh.nodes[face.n[0]].p;
@@ -104,11 +105,11 @@ public class Planet : MonoBehaviour {
             face.centroid = Utils.CalculateFaceCentroid(p0, p1, p2).normalized;
         }
 
-        for(i = 0; i < mesh.nodes.Count; ++i)
+        for (i = 0; i < mesh.nodes.Count; ++i)
         {
             var node = mesh.nodes[i];
             var faceIndex = node.f[0];
-            for(var j = 1; j < node.f.Count - 1; ++j)
+            for (var j = 1; j < node.f.Count - 1; ++j)
             {
                 faceIndex = Utils.FindNextFaceIndex(mesh, i, faceIndex);
                 var k = node.f.IndexOf(faceIndex);
@@ -122,14 +123,14 @@ public class Planet : MonoBehaviour {
     private void GeneratePlanetMesh(bool heights)
     {
         Matrix4x4 trs = Matrix4x4.TRS(transform.position, transform.rotation, transform.localScale);
-	    var verts = new List<Vector3>();
+        var verts = new List<Vector3>();
         var norms = new List<Vector3>();
         var tris = new List<int>();
 
-	    var tileStart = 0;
-	    foreach (var tile in surface.topology.tiles)
-	    {
-            if(tileStart >= 64000)
+        var tileStart = 0;
+        foreach (var tile in surface.topology.tiles)
+        {
+            if (tileStart >= 64000)
             {
                 GameObject go = new GameObject("child");
                 go.transform.parent = this.gameObject.transform;
@@ -151,60 +152,99 @@ public class Planet : MonoBehaviour {
             var tileNorm = (this.transform.rotation * tile.normal).normalized;
             var tileOffset = (heights) ? (tile.elevation) * transform.localScale.x / 30f : 0f;
 
+
             verts.Add(trs.MultiplyPoint3x4(tile.averagePosition) + tileNorm * tileOffset);
+
 
             var mag1 = tileNorm * tileOffset;
 
             norms.Add(tileNorm);
 
-	        tileStart = verts.Count - 1;
+            tileStart = verts.Count - 1;
             int index = 0;
-	        foreach (var corner in tile.corners)
-	        {
-                var cornerNorm = (transform.rotation * corner.position).normalized;
-	            verts.Add(trs.MultiplyPoint3x4(corner.position) + cornerNorm * tileOffset);
-                norms.Add(tileNorm);
-
-                if(heights)
+            foreach (var corner in tile.corners)
+            {
+                if (heights)
                 {
+                    var cornerNorm = (transform.rotation * corner.position).normalized;
+                    verts.Add(trs.MultiplyPoint3x4(corner.position) + cornerNorm * tileOffset);
+                    norms.Add(tileNorm);
+
                     var nextCorner = tile.corners[(index + 1) % tile.corners.Length];
                     var nextCornerNorm = (transform.rotation * nextCorner.position).normalized;
                     var borderNorm = Vector3.Cross(nextCorner.position, corner.position).normalized;
-                    verts.Add(trs.MultiplyPoint3x4(corner.position) + cornerNorm * tileOffset);
-                    verts.Add(transform.position);
-                    verts.Add(trs.MultiplyPoint3x4(nextCorner.position) + nextCornerNorm * tileOffset);
-                    verts.Add(transform.position);
+
+                    //brnkhy false will force tiles' sidepanels to 10% depth instead of 100% 
+                    if (true)
+                    {
+                        verts.Add(trs.MultiplyPoint3x4(corner.position) + cornerNorm * tileOffset);
+                        verts.Add(transform.position);
+                        verts.Add(trs.MultiplyPoint3x4(nextCorner.position) + nextCornerNorm * tileOffset);
+                        verts.Add(transform.position);
+                    }
+                    else 
+                    {
+                        verts.Add(trs.MultiplyPoint3x4(corner.position) + cornerNorm * tileOffset);
+                        verts.Add((trs.MultiplyPoint3x4(corner.position) - transform.position) * 0.90f + transform.position);
+                        verts.Add(trs.MultiplyPoint3x4(nextCorner.position) + nextCornerNorm * tileOffset);
+                        verts.Add((trs.MultiplyPoint3x4(nextCorner.position) - transform.position) * 0.90f + transform.position);    
+                    }
+                    
                     for (int i = 0; i < 4; i++) norms.Add(borderNorm);
 
-                    tris.AddRange(new int[] {   verts.Count - 4, verts.Count - 2, verts.Count - 3,
-                                                verts.Count - 2, verts.Count - 1, verts.Count - 3});
+                    tris.AddRange(new int[]
+	                {
+	                    verts.Count - 4, verts.Count - 2, verts.Count - 3,
+	                    verts.Count - 2, verts.Count - 1, verts.Count - 3
+	                });
                     //Debug.DrawLine(verts[verts.Count - 4], verts[verts.Count - 4] + borderNorm * 25f, Color.red, 100f);
                     //Debug.DrawLine(verts[verts.Count - 3], verts[verts.Count - 3] + borderNorm * 25f, Color.green, 100f);
                     //Debug.DrawLine(verts[verts.Count - 2], verts[verts.Count - 2] + borderNorm * 25f, Color.blue, 100f);
                     //Debug.DrawLine(verts[verts.Count - 1], verts[verts.Count - 1] + borderNorm * 25f, Color.white, 100f);
-
+                }
+                else
+                {
+                    var cornerNorm = (transform.rotation * corner.position).normalized;
+                    verts.Add(trs.MultiplyPoint3x4(corner.position) + cornerNorm * corner.elevation * 50);
+                    norms.Add(tileNorm);
                 }
 
                 index++;
-	        }
+            }
 
             for (int i = 1; i <= tile.corners.Length; i++)
             {
-                var mid = (i + 1) % (tile.corners.Length + 1) != 0
-                    ? i + 1
-                    : 1;
+                if (heights)
+                {
+                    var mid = (i + 1) % (tile.corners.Length + 1) != 0
+                        ? i + 1
+                        : 1;
 
-                tris.Add(tileStart);
-                tris.Add(tileStart + ((heights) ? ((mid - 1) * 5 + 1) : mid));
-                tris.Add(tileStart + ((heights) ? ((i - 1) * 5 + 1) : i));
+                    tris.Add(tileStart);
+                    tris.Add(tileStart + (mid - 1) * 5 + 1);
+                    tris.Add(tileStart + (i - 1) * 5 + 1);
+                }
+                else
+                {
+                    var mid = (i + 1) < (tile.corners.Length)
+                        ? i + 1
+                        : (i + 1) % (tile.corners.Length) + 1;
+
+                    if (mid == 1)
+                        break;
+
+                    tris.Add(tileStart + 1);
+                    tris.Add(tileStart + 1 + mid);
+                    tris.Add(tileStart + 1 + i);
+                }
             }
 
             // Add skirts for elevated hexagons.
             // Currently this is a straightforward implementation
             // without any optimizations.
-            if(false)
+            if (false)
             {
-                foreach(var border in tile.borders)
+                foreach (var border in tile.borders)
                 {
                     var borderNorm = Vector3.Cross(border.corners[1].position, border.corners[0].position).normalized;
                     borderNorm = this.transform.rotation * borderNorm;
@@ -212,7 +252,7 @@ public class Planet : MonoBehaviour {
                 }
 
             }
-	    }
+        }
 
         GameObject ch = new GameObject("child");
         ch.transform.parent = this.gameObject.transform;
@@ -225,7 +265,7 @@ public class Planet : MonoBehaviour {
         mesh2.triangles = tris.ToArray();
         mesh2.normals = norms.ToArray();
     }
-    
+
     private void GeneratePlanetTerrain()
     {
 
@@ -240,13 +280,13 @@ public class Planet : MonoBehaviour {
         var topology = this.surface.topology;
 
         var failedCount = 0;
-        while(plates.Count < plateCount && failedCount < 10000)
+        while (plates.Count < plateCount && failedCount < 10000)
         {
             var corner = topology.corners[globalRandom.Next(0, topology.corners.Count)];
             var adjacentToExistingPlate = false;
-            for(var i = 0; i < corner.tiles.Length; ++i)
+            for (var i = 0; i < corner.tiles.Length; ++i)
             {
-                if(corner.tiles[i].plate != null)
+                if (corner.tiles[i].plate != null)
                 {
                     adjacentToExistingPlate = true;
                     failedCount += 1;
@@ -260,25 +300,25 @@ public class Planet : MonoBehaviour {
             var oceanic = (globalRandom.NextDouble() < this.oceanicRate);
             var plate = new Plate(new Color((float)globalRandom.NextDouble(), (float)globalRandom.NextDouble(), (float)globalRandom.NextDouble()),
                                     Utils.RandomUnitVector(globalRandom),
-                                    (float) (globalRandom.NextDouble() * (Math.PI / 15f) - (Math.PI / 30f)),
-                                    (float) (globalRandom.NextDouble() * (Math.PI / 15f) - (Math.PI / 30f)),
-                                    (float) ((oceanic) ? (globalRandom.NextDouble() * 0.5 - 0.8) : (globalRandom.NextDouble() * 0.4 + 0.1)),
+                                    (float)(globalRandom.NextDouble() * (Math.PI / 15f) - (Math.PI / 30f)),
+                                    (float)(globalRandom.NextDouble() * (Math.PI / 15f) - (Math.PI / 30f)),
+                                    (float)((oceanic) ? (globalRandom.NextDouble() * 0.5 - 0.8) : (globalRandom.NextDouble() * 0.4 + 0.1)),
                                     oceanic,
                                     corner);
             plates.Add(plate);
 
-            for(var i = 0; i < corner.tiles.Length; ++i)
+            for (var i = 0; i < corner.tiles.Length; ++i)
             {
                 corner.tiles[i].plate = plate;
                 plate.tiles.Add(corner.tiles[i]);
             }
-            for(var i = 0; i < corner.tiles.Length; ++i)
+            for (var i = 0; i < corner.tiles.Length; ++i)
             {
                 var tile = corner.tiles[i];
-                for(var j = 0; j < tile.tiles.Length; ++j)
+                for (var j = 0; j < tile.tiles.Length; ++j)
                 {
                     var adjacentTile = tile.tiles[j];
-                    if(adjacentTile.plate == null)
+                    if (adjacentTile.plate == null)
                     {
                         platelessTiles.Add(adjacentTile);
                         platelessTilePlates.Add(plate);
@@ -287,27 +327,27 @@ public class Planet : MonoBehaviour {
             }
         }
 
-        while(platelessTiles.Count > 0)
+        while (platelessTiles.Count > 0)
         {
             // XXX: Try something else instead of globalRandom.Next() if this fails.
             var tileIndex = (int)Math.Floor(Math.Pow(globalRandom.NextDouble(), 2) * platelessTiles.Count);
-			var tile = platelessTiles[tileIndex];
-			var plate = platelessTilePlates[tileIndex];
+            var tile = platelessTiles[tileIndex];
+            var plate = platelessTilePlates[tileIndex];
             platelessTiles.RemoveAt(tileIndex); // splice(tileIndex, 1);
             platelessTilePlates.RemoveAt(tileIndex); // splice(tileIndex, 1);
-			if (tile.plate == null)
-			{
-				tile.plate = plate;
-				plate.tiles.Add(tile);
-				for (var j = 0; j < tile.tiles.Length; ++j)
-				{
-					if (tile.tiles[j].plate == null)
-					{
-						platelessTiles.Add(tile.tiles[j]);
-						platelessTilePlates.Add(plate);
-					}
-				}
-			}
+            if (tile.plate == null)
+            {
+                tile.plate = plate;
+                plate.tiles.Add(tile);
+                for (var j = 0; j < tile.tiles.Length; ++j)
+                {
+                    if (tile.tiles[j].plate == null)
+                    {
+                        platelessTiles.Add(tile.tiles[j]);
+                        platelessTilePlates.Add(plate);
+                    }
+                }
+            }
         }
         calculateCornerDistancesToPlateRoot(plates);
         this.tectonicPlates = plates;
@@ -328,30 +368,30 @@ public class Planet : MonoBehaviour {
     void calculateCornerDistancesToPlateRoot(List<Plate> plates)
     {
         var distanceCornerQueue = new List<DistanceCorner>();
-        for(var i = 0; i < plates.Count; ++i)
+        for (var i = 0; i < plates.Count; ++i)
         {
             var corner = plates[i].root;
             corner.distanceToPlateRoot = 0;
-            for(var j = 0; j < corner.corners.Length; ++j)
+            for (var j = 0; j < corner.corners.Length; ++j)
             {
                 distanceCornerQueue.Add(new DistanceCorner(corner.corners[j], corner.borders[j].Length()));
             }
         }
 
-        while(true)
+        while (true)
         {
             if (distanceCornerQueue.Count == 0) return;
 
             var iEnd = distanceCornerQueue.Count;
-            for(var i = 0; i < iEnd; ++i)
+            for (var i = 0; i < iEnd; ++i)
             {
                 var front = distanceCornerQueue[i];
                 var corner = front.corner;
                 var distanceToPlateRoot = front.distanceToPlateRoot;
-                if(corner.distanceToPlateRoot == 0 || corner.distanceToPlateRoot > distanceToPlateRoot)
+                if (corner.distanceToPlateRoot == 0 || corner.distanceToPlateRoot > distanceToPlateRoot)
                 {
                     corner.distanceToPlateRoot = distanceToPlateRoot;
-                    for(var j = 0; j < corner.corners.Length; ++j)
+                    for (var j = 0; j < corner.corners.Length; ++j)
                     {
                         distanceCornerQueue.Add(new DistanceCorner(corner.corners[j], distanceToPlateRoot + corner.borders[j].Length()));
                     }
@@ -411,17 +451,17 @@ public class Planet : MonoBehaviour {
     int[] CalculatePlateBoundaryStress(List<Corner> boundaryCorners)
     {
         var boundaryCornerInnerBorderIndices = new int[boundaryCorners.Count];
-        for(var i = 0; i < boundaryCorners.Count; ++i)
+        for (var i = 0; i < boundaryCorners.Count; ++i)
         {
             var corner = boundaryCorners[i];
             corner.distanceToPlateRoot = 0;
 
             Border innerBorder = null;
             int innerBorderIndex = 0;
-            for(var j = 0; j < corner.borders.Length; ++j)
+            for (var j = 0; j < corner.borders.Length; ++j)
             {
                 var border = corner.borders[j];
-                if(!border.betweenPlates)
+                if (!border.betweenPlates)
                 {
                     innerBorder = border;
                     innerBorderIndex = j;
@@ -429,7 +469,7 @@ public class Planet : MonoBehaviour {
                 }
             }
 
-            if(innerBorder != null)
+            if (innerBorder != null)
             {
                 boundaryCornerInnerBorderIndices[i] = innerBorderIndex;
                 var outerBorder0 = corner.borders[(innerBorderIndex + 1) % corner.borders.Length];
@@ -748,7 +788,8 @@ public class Planet : MonoBehaviour {
                 }
             }
             elevationBorderQueue.RemoveRange(0, iEnd);
-            elevationBorderQueue.Sort(delegate(ElevationBorder A, ElevationBorder B) {
+            elevationBorderQueue.Sort(delegate(ElevationBorder A, ElevationBorder B)
+            {
                 return A.distanceToPlateBoundary.CompareTo(B.distanceToPlateBoundary);
             });
         }
