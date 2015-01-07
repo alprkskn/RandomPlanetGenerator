@@ -19,7 +19,7 @@ public class TestScene : MonoBehaviour {
             GameObject go = new GameObject("Planet " + i);
             planets.Add(go);
             Planet p = go.AddComponent<Planet>();
-            p.subdivisionLevel = Random.Range(1, 30);
+            p.subdivisionLevel = Random.Range(100, 100);
             p.plateCount = (int)Mathf.Floor(p.subdivisionLevel * Random.Range(.2f, 2f));
             go.transform.position = new Vector3(Random.Range(-extents.x, extents.x), Random.Range(-extents.y, extents.y), Random.Range(-extents.z, -extents.z));
             float scale = Random.Range(minScale, maxScale);
@@ -27,7 +27,7 @@ public class TestScene : MonoBehaviour {
             p.Generate();
         }
 
-        
+        Camera.main.rect = new Rect(0, 0, Screen.width, Screen.height);
         SmoothFollow sf = Camera.main.GetComponent<SmoothFollow>();
         int index = Random.Range(0, planets.Count - 1);
         sf.target = planets[index].transform;
@@ -52,7 +52,11 @@ public class TestScene : MonoBehaviour {
             }
         }
 
+#if UNITY_EDITOR || UNITY_STANDALONE
         if(Input.GetKeyDown(KeyCode.Space))
+#elif UNITY_ANDROID
+        if(Input.GetTouch(0).tapCount == 2)
+#endif
         {
             mo.enabled = false;
             int index = Random.Range(0, planets.Count - 1);
@@ -60,6 +64,15 @@ public class TestScene : MonoBehaviour {
             sf.distance = 2 * sf.target.localScale.x;
             sf.height = 0;
             sf.enabled = true;
+
         }
+#if UNITY_ANDROID
+        //if(Input.GetTouch(0).tapCount == 1)
+        //{
+        //    Touch t = Input.GetTouch(0);
+        //    Input.
+        //}
+#endif
 	}
+
 }
