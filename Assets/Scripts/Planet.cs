@@ -32,22 +32,23 @@ public class Planet : MonoBehaviour {
         this.GeneratePlanetTectonicPlates();
         this.GeneratePlanetElevation();
         //DrawTectonicPlates(6000f);
-        this.GeneratePlanetMesh();
+        this.GeneratePlanetMesh(false);
     }
 
     void Update()
     {
+#if UNITY_STANDALONE || UNITY_EDITOR
         Tile tile;
         this.IntersectRay(Camera.main.ScreenPointToRay(Input.mousePosition), out tile);
         if (tile != null)
         {
             tile.DebugDraw(Color.red, 0, this.transform.localScale.x / 100f, this.transform);
-            foreach(var t in tile.plate.tiles)
-            {
-                t.DebugDraw(Color.green, 0, this.transform.localScale.x / 150f, this.transform);
-            }
+            //foreach(var t in tile.plate.tiles)
+            //{
+            //    t.DebugDraw(Color.green, 0, this.transform.localScale.x / 150f, this.transform);
+            //}
         }
-
+#endif
     }
 
     void DrawTectonicPlates(float duration)
@@ -118,7 +119,7 @@ public class Planet : MonoBehaviour {
         this.surface = mesh;
         return mesh;
     }
-    private void GeneratePlanetMesh()
+    private void GeneratePlanetMesh(bool heights)
     {
         Matrix4x4 trs = Matrix4x4.TRS(transform.position, transform.rotation, transform.localScale);
 	    var verts = new List<Vector3>();
@@ -147,14 +148,36 @@ public class Planet : MonoBehaviour {
                 norms.Clear();
                 tris.Clear();
             }
-            verts.Add(trs.MultiplyPoint3x4(tile.averagePosition));
-            norms.Add((transform.rotation * tile.averagePosition).normalized);
+            var tileNorm = (this.transform.rotation * tile.normal).normalized;
+            var tileOffset = (heights) ? (tile.elevation - 1f) * transform.localScale.x / 30f : 0f;
+
+            verts.Add(trs.MultiplyPoint3x4(tile.averagePosition) + tileNorm * tileOffset);
+            norms.Add(tileNorm);
 
 	        tileStart = verts.Count - 1;
+            int index = 0;
 	        foreach (var corner in tile.corners)
 	        {
-	            verts.Add(trs.MultiplyPoint3x4(corner.position));
-                norms.Add((transform.rotation * tile.averagePosition).normalized);
+                var cornerNorm = (transform.rotation * corner.position).normalized;
+	            verts.Add(trs.MultiplyPoint3x4(corner.position) + cornerNorm * tileOffset);
+                norms.Add(cornerNorm);
+
+                if(heights)
+                {
+                    var nextCorner = tile.corners[(index + 1) % tile.corners.Length];
+                    var borderNorm = Vector3.Cross(nextCorner.position, corner.position).normalized;
+                    verts.Add(trs.MultiplyPoint3x4(corner.position) + cornerNorm * tileOffset);
+                    verts.Add(trs.MultiplyPoint3x4(corner.position));
+                    verts.Add(trs.MultiplyPoint3x4(nextCorner.position) + cornerNorm * tileOffset);
+                    verts.Add(trs.MultiplyPoint3x4(nextCorner.position));
+                    for (int i = 0; i < 4; i++) norms.Add(borderNorm);
+
+                    tris.AddRange(new int[] {   tileStart + 1, tileStart + 2, tileStart + 3,
+                                                tileStart + 3, tileStart + 2, tileStart + 4});
+
+                }
+
+                index++;
 	        }
 
             for (int i = 1; i <= tile.corners.Length; i++)
@@ -164,8 +187,22 @@ public class Planet : MonoBehaviour {
                     : 1;
 
                 tris.Add(tileStart);
-                tris.Add(tileStart + mid);
-                tris.Add(tileStart + i);
+                tris.Add(tileStart + ((heights) ? ((mid - 1) * 5 + 1) : mid));
+                tris.Add(tileStart + ((heights) ? ((i - 1) * 5 + 1) : i));
+            }
+
+            // Add skirts for elevated hexagons.
+            // Currently this is a straightforward implementation
+            // without any optimizations.
+            if(heights)
+            {
+                foreach(var border in tile.borders)
+                {
+                    var borderNorm = Vector3.Cross(border.corners[1].position, border.corners[0].position).normalized;
+                    borderNorm = this.transform.rotation * borderNorm;
+                    verts.Add(trs.MultiplyPoint3x4(border.corners[1].position));
+                }
+
             }
 	    }
 
