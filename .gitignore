@@ -213,6 +213,9 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 
+# UnityVS
+Assets/UnityVS
+
 # Imported from a previous project
 # Note: Might have duplicates
 *.booproj
@@ -231,4 +234,5 @@ Temp
 obj
 sysinfo.txt
 taosim_new-csharp.sln.DotSettings.user
+
 

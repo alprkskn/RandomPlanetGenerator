@@ -19,13 +19,21 @@ function Start () {
 
 	// Make the rigid body not change rotation
    	if (GetComponent.<Rigidbody>())
-		GetComponent.<Rigidbody>().freezeRotation = true;
+   	    GetComponent.<Rigidbody>().freezeRotation = true;
+
+   	this.transform.position = target.position - Vector3.forward * distance;
+   	this.transform.LookAt(target);
 }
 
 function LateUpdate () {
-    if (target) {
+    if (target && Input.GetMouseButton(0)) {
+#if UNITY_EDITOR || UNITY_STANDALONE
         x += Input.GetAxis("Mouse X") * xSpeed * 0.02;
         y -= Input.GetAxis("Mouse Y") * ySpeed * 0.02;
+#elif UNITY_ANDROID
+        x += Input.GetTouch(0).deltaPosition.x;
+        y -= Input.GetTouch(0).deltaPosition.y;
+#endif
  		
  		y = ClampAngle(y, yMinLimit, yMaxLimit);
  		       
