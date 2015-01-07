@@ -27,8 +27,13 @@ function Start () {
 
 function LateUpdate () {
     if (target && Input.GetMouseButton(0)) {
+#if UNITY_EDITOR || UNITY_STANDALONE
         x += Input.GetAxis("Mouse X") * xSpeed * 0.02;
         y -= Input.GetAxis("Mouse Y") * ySpeed * 0.02;
+#elif UNITY_ANDROID
+        x += Input.GetTouch(0).deltaPosition.x;
+        y -= Input.GetTouch(0).deltaPosition.y;
+#endif
  		
  		y = ClampAngle(y, yMinLimit, yMaxLimit);
  		       
