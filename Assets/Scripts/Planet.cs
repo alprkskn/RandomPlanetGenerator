@@ -32,7 +32,7 @@ public class Planet : MonoBehaviour {
         this.GeneratePlanetTectonicPlates();
         this.GeneratePlanetElevation();
         //DrawTectonicPlates(6000f);
-        this.GeneratePlanetMesh(false);
+        this.GeneratePlanetMesh(true);
     }
 
     void Update()
@@ -149,9 +149,12 @@ public class Planet : MonoBehaviour {
                 tris.Clear();
             }
             var tileNorm = (this.transform.rotation * tile.normal).normalized;
-            var tileOffset = (heights) ? (tile.elevation - 1f) * transform.localScale.x / 30f : 0f;
+            var tileOffset = (heights) ? (tile.elevation) * transform.localScale.x / 30f : 0f;
 
             verts.Add(trs.MultiplyPoint3x4(tile.averagePosition) + tileNorm * tileOffset);
+
+            var mag1 = tileNorm * tileOffset;
+
             norms.Add(tileNorm);
 
 	        tileStart = verts.Count - 1;
@@ -160,20 +163,25 @@ public class Planet : MonoBehaviour {
 	        {
                 var cornerNorm = (transform.rotation * corner.position).normalized;
 	            verts.Add(trs.MultiplyPoint3x4(corner.position) + cornerNorm * tileOffset);
-                norms.Add(cornerNorm);
+                norms.Add(tileNorm);
 
                 if(heights)
                 {
                     var nextCorner = tile.corners[(index + 1) % tile.corners.Length];
+                    var nextCornerNorm = (transform.rotation * nextCorner.position).normalized;
                     var borderNorm = Vector3.Cross(nextCorner.position, corner.position).normalized;
                     verts.Add(trs.MultiplyPoint3x4(corner.position) + cornerNorm * tileOffset);
-                    verts.Add(trs.MultiplyPoint3x4(corner.position));
-                    verts.Add(trs.MultiplyPoint3x4(nextCorner.position) + cornerNorm * tileOffset);
-                    verts.Add(trs.MultiplyPoint3x4(nextCorner.position));
+                    verts.Add(transform.position);
+                    verts.Add(trs.MultiplyPoint3x4(nextCorner.position) + nextCornerNorm * tileOffset);
+                    verts.Add(transform.position);
                     for (int i = 0; i < 4; i++) norms.Add(borderNorm);
 
-                    tris.AddRange(new int[] {   tileStart + 1, tileStart + 2, tileStart + 3,
-                                                tileStart + 3, tileStart + 2, tileStart + 4});
+                    tris.AddRange(new int[] {   verts.Count - 4, verts.Count - 2, verts.Count - 3,
+                                                verts.Count - 2, verts.Count - 1, verts.Count - 3});
+                    //Debug.DrawLine(verts[verts.Count - 4], verts[verts.Count - 4] + borderNorm * 25f, Color.red, 100f);
+                    //Debug.DrawLine(verts[verts.Count - 3], verts[verts.Count - 3] + borderNorm * 25f, Color.green, 100f);
+                    //Debug.DrawLine(verts[verts.Count - 2], verts[verts.Count - 2] + borderNorm * 25f, Color.blue, 100f);
+                    //Debug.DrawLine(verts[verts.Count - 1], verts[verts.Count - 1] + borderNorm * 25f, Color.white, 100f);
 
                 }
 
@@ -194,7 +202,7 @@ public class Planet : MonoBehaviour {
             // Add skirts for elevated hexagons.
             // Currently this is a straightforward implementation
             // without any optimizations.
-            if(heights)
+            if(false)
             {
                 foreach(var border in tile.borders)
                 {
