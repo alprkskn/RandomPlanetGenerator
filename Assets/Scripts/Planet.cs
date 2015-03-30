@@ -19,6 +19,14 @@ public class Planet : MonoBehaviour
     public float heatLevel = 1.0f;
     public float moistureLevel = 1.0f;
 
+    public float PlanetScale
+    {
+        get
+        {
+            return this.transform.localScale.x;
+        }
+    }
+
     void Awake()
     {
         //Generate();
@@ -454,7 +462,7 @@ public class Planet : MonoBehaviour
         for (var i = 0; i < boundaryCorners.Count; ++i)
         {
             var corner = boundaryCorners[i];
-            corner.distanceToPlateRoot = 0;
+            corner.distanceToPlateBoundary = 0;
 
             Border innerBorder = null;
             int innerBorderIndex = 0;
