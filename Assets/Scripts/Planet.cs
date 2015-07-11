@@ -41,7 +41,7 @@ public class Planet : MonoBehaviour
         this.GeneratePlanetTectonicPlates();
         this.GeneratePlanetElevation();
         //DrawTectonicPlates(6000f);
-        this.GeneratePlanetMesh(true);
+        this.GeneratePlanetMesh(false);
     }
 
     void Update()
@@ -134,6 +134,7 @@ public class Planet : MonoBehaviour
         var verts = new List<Vector3>();
         var norms = new List<Vector3>();
         var tris = new List<int>();
+        var colors = new List<Color>();
 
         var tileStart = 0;
         foreach (var tile in surface.topology.tiles)
@@ -146,16 +147,25 @@ public class Planet : MonoBehaviour
                 var mesh = new Mesh { name = "World Mesh" };
                 go.AddComponent<MeshFilter>().mesh = mesh;
                 var mr = go.AddComponent<MeshRenderer>();
-                mr.material = new Material(Shader.Find("Diffuse"));
-                mesh.vertices = verts.ToArray();
+                mr.material = new Material(Shader.Find("Standard (Vertex Color)"));
                 //mesh.uv = UV;
+
+                for (int i = 0; i < verts.Count; i++)
+                {
+                    colors.Add((Vector3.Distance(this.transform.position, verts[i]) > this.PlanetScale) ? Color.green : Color.blue);
+                    verts[i] = (Vector3.Distance(this.transform.position, verts[i]) > this.PlanetScale) ? verts[i] : ((verts[i] - transform.position).normalized * this.PlanetScale * 0.999f) + transform.position;
+                }
+
+                mesh.vertices = verts.ToArray();
                 mesh.triangles = tris.ToArray();
                 mesh.normals = norms.ToArray();
+                mesh.colors = colors.ToArray();
 
                 tileStart = 0;
                 verts.Clear();
                 norms.Clear();
                 tris.Clear();
+                colors.Clear();
             }
             var tileNorm = (this.transform.rotation * tile.normal).normalized;
             var tileOffset = (heights) ? (tile.elevation) * transform.localScale.x / 30f : 0f;
@@ -180,7 +190,7 @@ public class Planet : MonoBehaviour
 
                     var nextCorner = tile.corners[(index + 1) % tile.corners.Length];
                     var nextCornerNorm = (transform.rotation * nextCorner.position).normalized;
-                    var borderNorm = Vector3.Cross(nextCorner.position, corner.position).normalized;
+                    var borderNorm = Vector3.Cross(corner.position, nextCorner.position).normalized;
 
                     //brnkhy false will force tiles' sidepanels to 10% depth instead of 100% 
                     if (true)
@@ -267,11 +277,20 @@ public class Planet : MonoBehaviour
         var mesh2 = new Mesh { name = "World Mesh" };
         ch.AddComponent<MeshFilter>().mesh = mesh2;
         var mr2 = ch.AddComponent<MeshRenderer>();
-        mr2.material = new Material(Shader.Find("Diffuse"));
-        mesh2.vertices = verts.ToArray();
+        mr2.material = new Material(Shader.Find("Standard (Vertex Color)"));
         //mesh.uv = UV;
+        colors = new List<Color>(verts.Count);
+
+        for (int i = 0; i < verts.Count; i++)
+        {
+            colors.Add((Vector3.Distance(this.transform.position, verts[i]) > this.PlanetScale) ? Color.green : Color.blue);
+            verts[i] = (Vector3.Distance(this.transform.position, verts[i]) > this.PlanetScale) ? verts[i] : ((verts[i] - transform.position).normalized * this.PlanetScale * 0.999f) + transform.position;
+        }
+
+        mesh2.vertices = verts.ToArray();
         mesh2.triangles = tris.ToArray();
         mesh2.normals = norms.ToArray();
+        mesh2.colors = colors.ToArray();
     }
 
     private void GeneratePlanetTerrain()
